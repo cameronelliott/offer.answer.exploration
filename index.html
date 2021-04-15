@@ -1,0 +1,92 @@
+<head>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+</head>
+
+
+
+<body>
+    <script>
+        //@ts-check
+
+        const offerOptions = {
+            offerToReceiveAudio: 1,
+            offerToReceiveVideo: 1
+        };
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+
+        async function xxx() {
+
+
+
+
+
+            console.log(999)
+
+            const gumopts = { video: { width: 1280, height: 720 }, audio: true }
+            const stream = await navigator.mediaDevices.getUserMedia(gumopts)
+
+
+
+            let pc1 = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+            pc1.onconnectionstatechange = e => console.log('pc1:' + pc1.iceConnectionState)
+            pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
+            pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
+            pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
+            pc1.addTransceiver(stream.getAudioTracks()[0], { 'direction': 'sendonly' })
+
+
+            let pc2 = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+            pc2.onconnectionstatechange = e => console.log('pc2:' + pc1.iceConnectionState)
+            pc2.ontrack = event => console.debug('track callback')
+            //pc2.addTrack(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
+            pc2.addTransceiver(stream.getAudioTracks()[0], { 'direction': 'recvonly' })
+
+
+
+            //pc1.addEventListener('icecandidate', e => { if (e.candidate) { pc2.addIceCandidate(e.candidate) } })
+            //pc2.addEventListener('icecandidate', e => { if (e.candidate) { pc1.addIceCandidate(e.candidate) } })
+
+            pc1.onicecandidate = function (e) {
+                if (e.candidate) { pc2.addIceCandidate(e.candidate) }
+                return false
+            }
+
+            pc2.onicecandidate = function (e) {
+                if (e.candidate) { pc1.addIceCandidate(e.candidate) }
+                return false
+            }
+
+            let pcofr = pc1
+            let pcans = pc2
+
+
+
+            const offer = await pcofr.createOffer()
+            await pcofr.setLocalDescription(offer)
+            console.log(offer)
+
+            await pcans.setRemoteDescription(offer)
+            const answer = await pcans.createAnswer();
+            console.log(answer)
+            await pcans.setLocalDescription(answer);
+
+            await pcofr.setRemoteDescription(answer);
+
+            //await pc2.addIceCandidate(null)
+
+
+
+
+            console.log('end end end')
+
+
+        }
+
+        xxx()
+
+    </script>
+</body>
