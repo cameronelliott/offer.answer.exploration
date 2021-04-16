@@ -5,6 +5,8 @@
 
 
 <body>
+    <audio id="a1" controls autoplay></audio>
+    <audio id="a2" controls autoplay></audio>
     <script>
         //@ts-check
 
@@ -17,6 +19,9 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
+        function foo(pc2, stream) {
+            pc2.addTransceiver(stream.getAudioTracks()[0])
+        }
 
         async function xxx() {
 
@@ -31,54 +36,89 @@
 
 
 
-            let pc1 = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
-            pc1.ontrack = async event => console.debug('pc1: **TRACK callback')
-            pc1.onconnectionstatechange = e => console.log('pc1:' + pc1.connectionState)
-            // pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
-            //pc1.addTransceiver('video')//, { 'direction': 'recvonly' })
-          //  pc1.addTransceiver(stream.getVideoTracks()[0])
-          pc1.addTransceiver(stream.getVideoTracks()[0])
+            // SFU downstream
+            let downstream = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+            downstream.ontrack = async event => console.debug('downstream: **TRACK callback')
+            downstream.onconnectionstatechange = e => console.log('pc1:' + downstream.connectionState)
+    
             //pc1.addTransceiver('video')
+            // pc1.addTransceiver('audio')
+
+            /*
+            The browser only needs two transcievers: one for audio and one for video
+
+            A downstream SFU connecting may need lots of transcievers: 100x video, 10x audio
+
+
+            */
+            
+            
+            //console.debug('downstream lines', downstream.localDescription.sdp.split(/\r\n|\r|\n/).length)
+
+            //console.log((await downstream.createOffer()).sdp)
+            downstream.addTransceiver('video', { 'direction': 'recvonly' })
+            //downstream.addTransceiver('video', { 'direction': 'recvonly' })
+            //downstream.addTransceiver('video', { 'direction': 'recvonly' })
+           // console.log((await downstream.createOffer()).sdp)
+
+           // console.debug('downstream lines', downstream.localDescription.sdp.split(/\r\n|\r|\n/).length)
+            downstream.addTransceiver('audio', { 'direction': 'recvonly' })
+
+            
+            let upstream = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+            upstream.onconnectionstatechange = e => console.log('pc2:' + upstream.connectionState)
+            upstream.ontrack = async event => { console.debug('upstream: **TRACK callback') }
+            
+            upstream.addTrack(stream.getVideoTracks()[0])
+           
+                upstream.addTrack(stream.getAudioTracks()[0])
+           
+            
+            //upstream.addTransceiver('video', { 'direction': 'sendonly' })              
+            //  upstream.addTransceiver('video', { 'direction': 'sendonly' })
+            //upstream.addTransceiver('video', { 'direction': 'sendonly' })
+            
+            
 
 
 
-            let pc2 = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
-            pc2.onconnectionstatechange = e => console.log('pc2:' + pc2.connectionState)
-            pc2.ontrack = async event => console.debug('pc2: **TRACK callback')
-            //pc2.addTrack(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
-     
-           pc2.addTransceiver(stream.getVideoTracks()[0])
-            //pc2.addTransceiver('video')//, { 'direction': 'recvonly' })
 
-
-
-            //pc1.addEventListener('icecandidate', e => { if (e.candidate) { pc2.addIceCandidate(e.candidate) } })
-            //pc2.addEventListener('icecandidate', e => { if (e.candidate) { pc1.addIceCandidate(e.candidate) } })
-
-            pc1.onicecandidate = function (e) {
-                if (e.candidate) { pc2.addIceCandidate(e.candidate) }
+            downstream.onicecandidate = function (e) {
+                if (e.candidate) { upstream.addIceCandidate(e.candidate) }
                 return false
             }
 
-            pc2.onicecandidate = function (e) {
-                if (e.candidate) { pc1.addIceCandidate(e.candidate) }
+            upstream.onicecandidate = function (e) {
+                if (e.candidate) { downstream.addIceCandidate(e.candidate) }
                 return false
             }
 
+
+
+            
            
 
-        
 
+            const offer = await downstream.createOffer()
+       
+            await downstream.setLocalDescription(offer)
 
-            const offer = await pc1.createOffer()
-            await pc1.setLocalDescription(offer)
             //network
-            await pc2.setRemoteDescription(offer)
 
-            const answer = await pc2.createAnswer()
-            await pc2.setLocalDescription(answer)
+            await upstream.setRemoteDescription(offer)
+            const answer = await upstream.createAnswer()
+            console.debug('upstream ans nlines', answer.sdp.split(/\r\n|\r|\n/).length)
+            await upstream.setLocalDescription(answer)
+
             //network
-            await pc1.setRemoteDescription(answer)
+            
+
+            await downstream.setRemoteDescription(answer)
+          
+            upstream.addTransceiver(stream.getAudioTracks()[0])
+            
+
+
 
             // const offer = await pc2.createOffer()
             // await pc2.setLocalDescription(offer)
