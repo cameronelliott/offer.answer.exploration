@@ -32,18 +32,23 @@
 
 
             let pc1 = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
-            pc1.onconnectionstatechange = e => console.log('pc1:' + pc1.iceConnectionState)
-            pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
-            pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
-            pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
-            pc1.addTransceiver(stream.getAudioTracks()[0], { 'direction': 'sendonly' })
+            pc1.ontrack = async event => console.debug('pc1: **TRACK callback')
+            pc1.onconnectionstatechange = e => console.log('pc1:' + pc1.connectionState)
+            // pc1.addTransceiver(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
+            //pc1.addTransceiver('video')//, { 'direction': 'recvonly' })
+          //  pc1.addTransceiver(stream.getVideoTracks()[0])
+          pc1.addTransceiver(stream.getVideoTracks()[0])
+            //pc1.addTransceiver('video')
+
 
 
             let pc2 = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
-            pc2.onconnectionstatechange = e => console.log('pc2:' + pc1.iceConnectionState)
-            pc2.ontrack = event => console.debug('track callback')
+            pc2.onconnectionstatechange = e => console.log('pc2:' + pc2.connectionState)
+            pc2.ontrack = async event => console.debug('pc2: **TRACK callback')
             //pc2.addTrack(stream.getVideoTracks()[0], { 'direction': 'sendonly' })
-            pc2.addTransceiver(stream.getAudioTracks()[0], { 'direction': 'recvonly' })
+     
+           pc2.addTransceiver(stream.getVideoTracks()[0])
+            //pc2.addTransceiver('video')//, { 'direction': 'recvonly' })
 
 
 
@@ -60,30 +65,34 @@
                 return false
             }
 
-            let pcofr = pc1
-            let pcans = pc2
+           
+
+        
 
 
+            const offer = await pc1.createOffer()
+            await pc1.setLocalDescription(offer)
+            //network
+            await pc2.setRemoteDescription(offer)
 
-            const offer = await pcofr.createOffer()
-            await pcofr.setLocalDescription(offer)
-            console.log(offer)
+            const answer = await pc2.createAnswer()
+            await pc2.setLocalDescription(answer)
+            //network
+            await pc1.setRemoteDescription(answer)
 
-            await pcans.setRemoteDescription(offer)
-            const answer = await pcans.createAnswer();
-            console.log(answer)
-            await pcans.setLocalDescription(answer);
-
-            await pcofr.setRemoteDescription(answer);
-
-            //await pc2.addIceCandidate(null)
+            // const offer = await pc2.createOffer()
+            // await pc2.setLocalDescription(offer)
+            // //network
+            // await pc1.setRemoteDescription(offer)
+            // const answer = await pc1.createAnswer()
+            // await pc1.setLocalDescription(answer)
+            // //network
+            // await pc2.setRemoteDescription(answer)
 
 
 
 
             console.log('end end end')
-
-
         }
 
         xxx()
